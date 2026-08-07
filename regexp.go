@@ -1,5 +1,5 @@
 // Package onigmo is the Ruby-flavoured face of the pure-Go Onigmo regular
-// expression engine. It is a thin wrapper over github.com/go-onigmo/engine — the
+// expression engine. It is a thin wrapper over github.com/go-regexp/engine — the
 // idiomatic-Go engine extracted so that both Go consumers and this Ruby binding
 // share a single matcher core — presenting the Ruby/Onigmo surface that rbgo
 // expects: Regexp.new-style eager compilation, a MatchData with 1-based group
@@ -9,7 +9,7 @@ package onigmo
 import (
 	"time"
 
-	engine "github.com/go-onigmo/engine"
+	engine "github.com/go-regexp/engine"
 )
 
 // Regexp is a compiled regular expression, safe for concurrent use by multiple
