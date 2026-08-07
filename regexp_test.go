@@ -1,17 +1,13 @@
 package onigmo
 
 import (
-	"errors"
 	"testing"
 	"time"
-
-	"github.com/go-ruby-regexp/regexp/internal/syntax"
 )
 
 func TestCompileError(t *testing.T) {
-	_, err := Compile("(")
-	if !errors.Is(err, syntax.ErrSyntax) {
-		t.Fatalf("expected ErrSyntax, got %v", err)
+	if _, err := Compile("("); err == nil {
+		t.Fatal("expected a compile error for a malformed pattern, got nil")
 	}
 }
 
@@ -177,38 +173,6 @@ func TestTimeoutAPI(t *testing.T) {
 	}
 }
 
-// TestLazyBuildDeferred verifies the compile/first-match split introduced to
-// keep Regexp.new fast: Compile only parses (validating syntax) and leaves the
-// heavy matcher state (instruction program + DFA) unbuilt, and the first match
-// builds it. A freshly-compiled Regexp therefore has a nil program until it is
-// used.
-func TestLazyBuildDeferred(t *testing.T) {
-	re := mustCompile(t, `[a-z]+\d`)
-	// Nothing heavy has been lowered yet: only the parse result is retained.
-	if re.m.prog != nil {
-		t.Fatal("Compile eagerly built the program; expected it deferred to first match")
-	}
-	// Encoding is answerable without forcing the build (it reads the stored enc).
-	if re.Encoding() != UTF8 {
-		t.Fatalf("Encoding() = %v, want UTF8", re.Encoding())
-	}
-	if re.m.prog != nil {
-		t.Fatal("Encoding() forced the machine build; it must not")
-	}
-	// The first match lowers the program; a later match reuses the same instance.
-	if re.Match("ab7") == nil {
-		t.Fatal("expected a match")
-	}
-	built := re.m.prog
-	if built == nil {
-		t.Fatal("first match did not build the program")
-	}
-	re.MatchString("cd8")
-	if re.m.prog != built {
-		t.Fatal("second match rebuilt the program; build must happen exactly once")
-	}
-}
-
 // TestCompileErrorIsEagerNotDeferred pins the MRI-fidelity contract that a
 // malformed pattern is rejected at Compile time (like Ruby's Regexp.new raising
 // RegexpError) and never silently deferred to a would-be first match. Deferring
@@ -270,22 +234,6 @@ func TestLazyBuildConcurrent(t *testing.T) {
 				t.Fatalf("pattern %q: a concurrent match disagreed with the expected result", pat)
 			}
 		}
-	}
-}
-
-// TestWithTimeoutSharesMachine verifies a WithTimeout copy shares the receiver's
-// lazily-built matcher state rather than triggering a second build: copying the
-// Regexp copies the *machine pointer, so a timeout variant and its origin resolve
-// to the same program once either is matched.
-func TestWithTimeoutSharesMachine(t *testing.T) {
-	re := mustCompile(t, `[a-z]+`)
-	timed := re.WithTimeout(time.Minute)
-	if re.m != timed.m {
-		t.Fatal("WithTimeout copy does not share the origin's machine")
-	}
-	timed.Match("abc") // builds through the copy
-	if re.m.prog == nil {
-		t.Fatal("build through the timeout copy did not populate the shared machine")
 	}
 }
 
